@@ -1,0 +1,17 @@
+time 2019-02-27 16:22:26
+2_1_CLUSTERED_ECCENTRIC_UNITARY_LVLCV_thre0.1
+robNum  2
+taskNum  1
+comp_threhold  0.1
+rob2tskDis  28.30194339616981 48.877397639399746
+tskDis  0.0
+
+rob_x  15 25
+rob_y  24 42
+rob_vel  1 1
+rob_abi  0.01 0.01
+
+tsk_x  0
+tsk_y  0
+tsk_rat  0.01410475403047674
+tsk_state  1

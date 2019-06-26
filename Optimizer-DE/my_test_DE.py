@@ -879,8 +879,6 @@ class DifferentialEvolutionSolver(object):
 
 
 
-
-
 def ackley(x,*args):
     arg1 = -0.2 * np.sqrt(0.5 * (x[0] ** 2 + x[1] ** 2))
     arg2 = 0.5 * (np.cos(2. * np.pi * x[0]) + np.cos(2. * np.pi * x[1]))
@@ -895,7 +893,6 @@ def callbackF(Xi,convergence):
     global Nfeval
     print ('{0:4d}   {1: 3.6f}   {2: 3.6f}   {3: 3.6f}   {4: 3.6f}'.format(Nfeval, Xi[0], Xi[1], Xi[2], ackley(Xi)))
     Nfeval += 1
-    
 if __name__ == '__main__':
     bounds = [(-5, 5), (-5, 5),(-5,5)]
     result = differential_evolution(ackley, bounds, callback = callbackF,args = (3,3), disp = True)    

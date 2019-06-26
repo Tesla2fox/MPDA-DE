@@ -1,0 +1,17 @@
+time 2019-02-27 16:22:26
+2_1_CLUSTERED_CLUSTERED_LVLCV_QUADRANT_thre0.1
+robNum  2
+taskNum  1
+comp_threhold  0.1
+rob2tskDis  23.08679276123039 14.317821063276353
+tskDis  0.0
+
+rob_x  76 89
+rob_y  47 12
+rob_vel  1 1
+rob_abi  0.07026160997096825 0.03563337595692569
+
+tsk_x  83
+tsk_y  25
+tsk_rat  0.0892483743318948
+tsk_state  1

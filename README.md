@@ -90,6 +90,7 @@ MPDA-DE
 ### 单词
 
 1. [Dithering](v.犹豫不决;踌躇)
+2. 
 
 
 
@@ -105,3 +106,16 @@ MPDA-DE
 
 1.  多目标优化的库 Platypus 
 2.  优化的库 NiaPy
+
+## 拟采用的对比方法
+
+1. **JADE (必须要对比的方法)**
+2. SADE
+3. JDE
+
+在多排列编码模式下的**MPDA-GENTIC ALGORITHM**
+
+MPDA - GENTIC ALGORITHMS 是否可以参考郭博士的 GA 
+
+
+

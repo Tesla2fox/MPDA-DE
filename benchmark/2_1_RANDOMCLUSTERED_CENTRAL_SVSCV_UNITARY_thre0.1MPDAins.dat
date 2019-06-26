@@ -1,0 +1,17 @@
+time 2019-02-27 16:22:26
+2_1_RANDOMCLUSTERED_CENTRAL_SVSCV_UNITARY_thre0.1
+robNum  2
+taskNum  1
+comp_threhold  0.1
+rob2tskDis  30.083217912982647 34.66987164671943
+tskDis  0.0
+
+rob_x  39 79
+rob_y  22 69
+rob_vel  1 1
+rob_abi  0.004353224565819353 0.002180321636602992
+
+tsk_x  50
+tsk_y  50
+tsk_rat  0.005867894969612026
+tsk_state  1
