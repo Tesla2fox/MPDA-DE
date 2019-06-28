@@ -64,6 +64,7 @@ class RobotDe(Robot):
         super(Robot,self).__init__()
         self.onRoadPeriodRatio = -1
         self.onTaskPeriodRatio = -1
+        self.makespanRatio = -1
 
 
 

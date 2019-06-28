@@ -6,9 +6,19 @@ from scipy.optimize import differential_evolution
 import  numpy as np
 from MPDA_decode.robot import RobotDe,RobotState
 from MPDA_decode.task import Task
+import logging
+import  random as rd
+from collections import  namedtuple
+import  random
 
 
+RobTaskPair = namedtuple('TaskRobPair',['robID','taskID'])
 
+
+'''
+random
+'''
+random.seed(1)
 
 class MPDA_DE_decode(object):
     _ins = object
@@ -37,24 +47,90 @@ class MPDA_DE_decode(object):
         self._taskLst = []
         self._robotLst = []
         self._cmpltLst = []
-
+        logging.basicConfig(level=logging.DEBUG)
     def decode(self,encode):
         self._encode = encode
         self._initState()
         try:
             self.decodeProcessor()
-        except:
+        except Exception as e:
+            logging.error(e)
             print("some Error")
             return sys.float_info.max
         else:
             makespan = self._calMakespan()
             return makespan
+    def decodeProcessor(self):
+        self._allocateLst = []
+        # raise Exception("???")
+        while not self._calEndCondition():
+
+
+            pairCandidate = self._selectRobTaskPair()
+            self._updateSol(pairCandidate)
+            break
+            pass
+
+
+
+        # for robID in  range(self.robNum):
+        #     for taskID in range(self.taskNum):
+        #         if self._cmpltLst[taskID] == True:
+        #             continue
+        #         if (robID,taskID) not in self._allocateLst:
+        #             onRoadPeriod = self._calRob2TaskOnRoadPeriod(robID,taskID)
+        #             if self._robotLst[robID].leaveTime + onRoadPeriod > self._taskLst[taskID].cmpltTime:
+        #                 '''
+        #                 preArriveTime > task.cmpltTime
+        #                 continue
+        #                 this part still need process
+        #                 '''
+        #                 continue
+        #             # preOnRoadPeriodLst.
+
+
+    def _updateSol(self,rob_task_pair):
+
+        pass
+    def _selectRobTaskPair(self):
+        #  pre means predict
+        #
+        #
+        #
+        #
+
+        preOnRoadPeriodLst = []
+        preOnTaskPeriodLst = []
+        for robID in range(self.robNum):
+            for taskID in range(self.taskNum):
+                if self._cmpltLst[taskID]:
+                    continue
+                # if RobTaskPair(robID,taskID) not in self._cmpltLst:
+                rob = self._robotLst[robID]
+                task = self._taskLst[taskID]
+                rob_task_pair = RobTaskPair(robID,taskID)
+                onRoadPeriod = self._calRob2TaskOnRoadPeriod(robID, taskID)
+                if onRoadPeriod + rob.leaveTime < self._decodeTime:
+                    continue
+                onTaskPeriod = self._calRobOnTaskPeriod(robID, taskID)
+
+                preOnRoadPeriodLst.append((rob_task_pair, onRoadPeriod))
+                preOnTaskPeriodLst.append((rob_task_pair, onTaskPeriod))
+
+        onRoadPeriodDic = self._sortLst(preOnRoadPeriodLst, reverseBoolean=False)
+        onTaskPeriodDic = self._sortLst(preOnTaskPeriodLst, reverseBoolean=False)
+
+        logging.debug(onRoadPeriodDic)
+        logging.debug(onTaskPeriodDic)
+
+        return RobTaskPair(robID=-1,taskID= -1)
+
+
     def _initState(self):
         self._taskLst.clear()
         self._robotLst.clear()
         self._cmpltLst.clear()
         self._cmpltLst = [False] * self.taskNum
-
         for i in range(self.robNum):
             rob = RobotDe()
             rob.ability = self.robAbiLst[i]
@@ -63,8 +139,10 @@ class MPDA_DE_decode(object):
             rob.stopBool = False
             rob.stateType = RobotState['onRoad']
             rob.leaveTime = 0
-            rob.onRoadPeriodRatio = self._encode[2*i]
-            rob.onTaskPeriodRatio = self._encode[2*i+1]
+            rob.onRoadPeriodRatio = self._encode[3*i]
+            rob.onTaskPeriodRatio = self._encode[3*i + 1]
+            rob.makespanRatio = self._encode[3*i + 2]
+
             self._robotLst.append(rob)
 
         for i in range(self.taskNum):
@@ -77,43 +155,15 @@ class MPDA_DE_decode(object):
             task.cmpltTime = sys.float_info.max
             self._taskLst.append(task)
         self._decodeTime = 0
-    def decodeProcessor(self):
-        self._allocateLst = []
-        for robID in  range(self.robNum):
-            for taskID in range(self.taskNum):
-                if self._cmpltLst[taskID] == True:
-                    continue
-                if (robID,taskID) not in self._allocateLst:
-                    onRoadPeriod = self._calRob2TaskOnRoadPeriod(robID,taskID)
-                    if self._robotLst[robID].leaveTime + onRoadPeriod > self._taskLst[taskID].cmpltTime:
-                        '''
-                        preArriveTime > task.cmpltTime 
-                        continue
-                        this part still need process
-                        '''
-                        continue
-                    preOnRoadPeriodLst.
+        logging.debug("init success")
 
 
-
-
-
-
-
+    def _calEndCondition(self):
+        for rob in self._robotLst:
+            if rob.stopBool == False:
+                return False
+        return  True
         pass
-
-    @staticmethod
-    def
-    @classmethod
-    def sortOrder(self):
-        for robID in range(self.robNum):
-
-
-    def
-
-
-
-
     def _calMakespan(self):
         # makespan for the MPDA problem
         leaveTimeLst = [rob.leaveTime for rob in self._robotLst]
@@ -130,10 +180,39 @@ class MPDA_DE_decode(object):
             dis = self.taskDisMat[currentTaskID][taskID]
             dur = dis/self.robVelLst[robID]
         return dur
+    def _calRobOnTaskPeriod(self,robID,taskID):
+        rob = self._robotLst[robID]
+        task = self._taskLst[taskID]
+        return random.random()
 
+    def _calCurrentMakespan(self,robID,taskID):
+        rob = self._robotLst[robID]
+        task = self._taskLst[taskID]
+        return random.random()
 
+    def _calRobTaskEventTime(self,robID,taskID):
+        rob = self._robotLst[robID]
+        task = self._taskLst[taskID]
+        self._calRob2TaskOnRoadPeriod(robID,taskID)
         pass
 
+
+
+    def _sortLst(self,lst = [],keyFunc =  lambda x : x[1], reverseBoolean = False):
+        lst = sorted(lst,key=keyFunc,reverse=reverseBoolean)
+        val = sys.float_info.min
+        # orderInd = -1
+        orderInd :int
+        dic = dict()
+        # index: int
+        for index, unit in enumerate(lst):
+            if val == unit[1]:
+                dic[unit[0]] = orderInd
+            else:
+                val = unit[1]
+                orderInd = index
+                dic[unit[0]] = orderInd
+        return dic
 
 
 if __name__ == '__main__':
@@ -146,7 +225,16 @@ if __name__ == '__main__':
     ins = Instance(BaseDir + '\\benchmark\\' + insName)
     MPDA_DE_decode._ins = ins
 
-    result = differential_evolution(ackley, bounds, callback = callbackF,args = (3,3), disp = True)
+    mpda_de_decode = MPDA_DE_decode()
+
+    encode = [rd.random() for x in range(ins.robNum * 3)]
+
+    # print(encode)
+    logging.info("encode = " + str(encode))
+    mpda_de_decode.decode(encode)
+
+
+    # result = differential_evolution(ackley, bounds, callback = callbackF,args = (3,3), disp = True)
 
 
 
