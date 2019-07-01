@@ -6,10 +6,12 @@ from scipy.optimize import differential_evolution
 import  numpy as np
 from MPDA_decode.robot import RobotDe,RobotState
 from MPDA_decode.task import Task
-import logging
 import  random as rd
 from collections import  namedtuple
 import  random
+
+
+# import logging
 
 
 RobTaskPair = namedtuple('TaskRobPair',['robID','taskID'])
@@ -47,14 +49,18 @@ class MPDA_DE_decode(object):
         self._taskLst = []
         self._robotLst = []
         self._cmpltLst = []
-        logging.basicConfig(level=logging.DEBUG)
+        # logging.basicConfig(level=logging.DEBUG)
     def decode(self,encode):
         self._encode = encode
         self._initState()
+
+        self.decodeProcessor()
+
+        raise  Exception("debug")
         try:
             self.decodeProcessor()
         except Exception as e:
-            logging.error(e)
+            # logging.error(e)
             print("some Error")
             return sys.float_info.max
         else:
@@ -120,9 +126,25 @@ class MPDA_DE_decode(object):
         onRoadPeriodDic = self._sortLst(preOnRoadPeriodLst, reverseBoolean=False)
         onTaskPeriodDic = self._sortLst(preOnTaskPeriodLst, reverseBoolean=False)
 
-        logging.debug(onRoadPeriodDic)
-        logging.debug(onTaskPeriodDic)
+        # logging.debug(onRoadPeriodDic)
+        # logging.debug(onTaskPeriodDic)
 
+        syntheticalOrderLst  = []
+        for key in onRoadPeriodDic:
+            onRoadOrder = onRoadPeriodDic[key]
+            onTaskOrder = onTaskPeriodDic[key]
+            rob = self._robotLst[key.robID]
+            syntheticalOrder = rob.onRoadPeriodRatio * onRoadOrder + rob.onTaskPeriodRatio* onTaskOrder
+            syntheticalOrderLst.append([RobTaskPair(key.robID,key.taskID),syntheticalOrder])
+
+        minRobTaskPair = min(syntheticalOrderLst, key =lambda x :x [1])
+
+        print(minRobTaskPair)
+
+
+        # logging.debug(minRobTaskPair)
+
+        raise  Exception("sad")
         return RobTaskPair(robID=-1,taskID= -1)
 
 
@@ -155,7 +177,7 @@ class MPDA_DE_decode(object):
             task.cmpltTime = sys.float_info.max
             self._taskLst.append(task)
         self._decodeTime = 0
-        logging.debug("init success")
+        # logging.debug("init success")
 
 
     def _calEndCondition(self):
@@ -183,6 +205,9 @@ class MPDA_DE_decode(object):
     def _calRobOnTaskPeriod(self,robID,taskID):
         rob = self._robotLst[robID]
         task = self._taskLst[taskID]
+        '''
+        此处还没有调试清楚
+        '''
         return random.random()
 
     def _calCurrentMakespan(self,robID,taskID):
@@ -230,7 +255,7 @@ if __name__ == '__main__':
     encode = [rd.random() for x in range(ins.robNum * 3)]
 
     # print(encode)
-    logging.info("encode = " + str(encode))
+    # logging.info("encode = " + str(encode))
     mpda_de_decode.decode(encode)
 
 
