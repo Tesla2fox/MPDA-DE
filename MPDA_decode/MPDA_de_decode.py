@@ -9,13 +9,26 @@ from MPDA_decode.task import Task
 import  random as rd
 from collections import  namedtuple
 import  random
-
-
+import  copy
+from MPDA_decode.deSolution import ActionSeq,ActionTuple,EventType
+from enum import Enum
 # import logging
 
 
 RobTaskPair = namedtuple('TaskRobPair',['robID','taskID'])
+OnTaskInfoTuple = namedtuple('OnTaskInfoTuple',['changeRateTime','cRate','robID','robAbi'])
 
+INF_NUM = sys.float_info.max
+INF_INT_NUM = sys.maxsize
+
+
+class SelectType(Enum):
+    AllTask = 1
+    OneTask = 2
+
+class ActionSeqType(Enum):
+    InOrder =  1
+    OutOfOrder = 2
 
 '''
 random
@@ -49,13 +62,14 @@ class MPDA_DE_decode(object):
         self._taskLst = []
         self._robotLst = []
         self._cmpltLst = []
+        self._actionSeq = ActionSeq()
         # logging.basicConfig(level=logging.DEBUG)
     def decode(self,encode):
         self._encode = encode
         self._initState()
 
-        self.decodeProcessor()
 
+        self.decodeProcessor()
         raise  Exception("debug")
         try:
             self.decodeProcessor()
@@ -67,15 +81,18 @@ class MPDA_DE_decode(object):
             makespan = self._calMakespan()
             return makespan
     def decodeProcessor(self):
-        self._allocateLst = []
+        self._allocatedLst = []
         # raise Exception("???")
+
+        select_type = SelectType.AllTask
+        select_taskID = INF_NUM
         while not self._calEndCondition():
-
-
-            pairCandidate = self._selectRobTaskPair()
-            self._updateSol(pairCandidate)
-            break
-            pass
+            pairCandidate = self._selectRobTaskPair(select_type= select_type,select_taskID = select_taskID)
+            if pairCandidate == RobTaskPair(robID=INF_NUM,taskID=INF_NUM):
+                break
+            select_type,select_taskID = self._updateSol(pairCandidate)
+            # break
+            # pass
 
 
 
@@ -95,33 +112,65 @@ class MPDA_DE_decode(object):
         #             # preOnRoadPeriodLst.
 
 
-    def _updateSol(self,rob_task_pair):
 
-        pass
-    def _selectRobTaskPair(self):
+    def _selectRobTaskPair(self,select_type = SelectType.AllTask,select_taskID = INF_NUM):
         #  pre means predict
         #
         #
         #
         #
 
+        if select_type == SelectType.AllTask:
+            selectTaskLst = range(self.taskNum)
+        elif select_type ==SelectType.OneTask:
+            selectTaskLst = [select_taskID]
+        else:
+            raise Exception("selectType Error")
+
+        self._predictActionSeqType = dict()
+        self._predictActionSeq = dict()
+        self.taskVariableDic = dict()
+
+        '''
+        感觉可以优化 此部分
+        '''
+        self._predictOnTaskPeriod = dict()
+
         preOnRoadPeriodLst = []
         preOnTaskPeriodLst = []
         for robID in range(self.robNum):
-            for taskID in range(self.taskNum):
+            for taskID in selectTaskLst:
                 if self._cmpltLst[taskID]:
                     continue
                 # if RobTaskPair(robID,taskID) not in self._cmpltLst:
                 rob = self._robotLst[robID]
                 task = self._taskLst[taskID]
                 rob_task_pair = RobTaskPair(robID,taskID)
+                if rob_task_pair in self._allocatedLst:
+                    continue
                 onRoadPeriod = self._calRob2TaskOnRoadPeriod(robID, taskID)
+                if onRoadPeriod + rob.leaveTime > task.cmpltTime:
+                    continue
+                '''
+                移动机器人没必要去 已经完成的任务点
+                '''
+
                 if onRoadPeriod + rob.leaveTime < self._decodeTime:
                     continue
-                onTaskPeriod = self._calRobOnTaskPeriod(robID, taskID)
+                '''
+                the old method 
+                '''
+                # onTaskPeriod = self._calRobOnTaskPeriod(robID, taskID,preOnRoadPeriod = onRoadPeriod)
+                '''
+                the new method 
+                '''
+                onTaskPeriod  = self._calActionSeq(robID, taskID,onRoadPeriod)
 
                 preOnRoadPeriodLst.append((rob_task_pair, onRoadPeriod))
                 preOnTaskPeriodLst.append((rob_task_pair, onTaskPeriod))
+
+        if len(preOnRoadPeriodLst) == 0:
+            return RobTaskPair(robID=INF_NUM, taskID=INF_NUM)
 
         onRoadPeriodDic = self._sortLst(preOnRoadPeriodLst, reverseBoolean=False)
         onTaskPeriodDic = self._sortLst(preOnTaskPeriodLst, reverseBoolean=False)
@@ -137,22 +186,20 @@ class MPDA_DE_decode(object):
             syntheticalOrder = rob.onRoadPeriodRatio * onRoadOrder + rob.onTaskPeriodRatio* onTaskOrder
             syntheticalOrderLst.append([RobTaskPair(key.robID,key.taskID),syntheticalOrder])
 
-        minRobTaskPair = min(syntheticalOrderLst, key =lambda x :x [1])
+        minRobTaskPair,rankValue = min(syntheticalOrderLst, key =lambda x :x [1])
 
-        print(minRobTaskPair)
-
-
+        print('minRobTaskPair= ',minRobTaskPair)
         # logging.debug(minRobTaskPair)
-
-        raise  Exception("sad")
-        return RobTaskPair(robID=-1,taskID= -1)
-
-
+        # raise  Exception("sad")
+        return minRobTaskPair
+        # return RobTaskPair(robID=-1,taskID= -1)
     def _initState(self):
+        self._actionSeq.clear()
         self._taskLst.clear()
         self._robotLst.clear()
         self._cmpltLst.clear()
         self._cmpltLst = [False] * self.taskNum
+
         for i in range(self.robNum):
             rob = RobotDe()
             rob.ability = self.robAbiLst[i]
@@ -164,7 +211,6 @@ class MPDA_DE_decode(object):
             rob.onRoadPeriodRatio = self._encode[3*i]
             rob.onTaskPeriodRatio = self._encode[3*i + 1]
             rob.makespanRatio = self._encode[3*i + 2]
-
             self._robotLst.append(rob)
 
         for i in range(self.taskNum):
@@ -177,6 +223,9 @@ class MPDA_DE_decode(object):
             task.cmpltTime = sys.float_info.max
             self._taskLst.append(task)
         self._decodeTime = 0
+        self._initTaskLst = copy.copy(self._taskLst)
+        self._initRobLst = copy.copy(self._robotLst)
+
         # logging.debug("init success")
 
 
@@ -202,13 +251,64 @@ class MPDA_DE_decode(object):
             dis = self.taskDisMat[currentTaskID][taskID]
             dur = dis/self.robVelLst[robID]
         return dur
-    def _calRobOnTaskPeriod(self,robID,taskID):
-        rob = self._robotLst[robID]
-        task = self._taskLst[taskID]
-        '''
-        此处还没有调试清楚
-        '''
-        return random.random()
+    # def _calRobOnTaskPeriod(self, robID, taskID, preOnRoadPeriod = 0):
+    #     rob = self._robotLst[robID]
+    #     robAbi = rob.ability
+    #     task = self._taskLst[taskID]
+    #     calTask = copy.deepcopy(self._taskLst[taskID])
+    #     if calTask.changeRateTime > rob.leaveTime + preOnRoadPeriod:
+    #         pass
+    #
+    #         # '''
+    #         # this part can be optimized.
+    #         # '''
+    #         # calTask.recover(*self._taskInitInfo[taskID])
+    #         # taskInfo = copy.deepcopy(self._taskInfoLst[taskID])
+    #         # taskInfo.append(
+    #         #     TaskInfoClass(robID=robID, changeRateTime=(rob.leaveTime + onRoadPeriod), cRate=10, robAbi=rob.ability))
+    #         # taskInfo = sorted(taskInfo, key=lambda x: x.changeRateTime)
+    #         # '''
+    #         # _taskInforLst is sorted by the arriveTime
+    #         # '''
+    #         # delIndexLst = []
+    #         # for i in range(len(taskInfo)):
+    #         #     taskInfoUnit = taskInfo[i]
+    #         #     if calTask.cmpltTime < taskInfoUnit.changeRateTime:
+    #         #         delIndexLst.append(taskInfoUnit)
+    #         #         continue
+    #         #     calTask.calCurrentState(taskInfoUnit.changeRateTime)
+    #         #     calTask.cRate = calTask.cRate - taskInfoUnit.robAbi
+    #         #     if calTask.cRate >= 0:
+    #         #         executePeriod = INF_NUM
+    #         #         calTask.cmpltTime = INF_NUM
+    #         #     else:
+    #         #         executePeriod = calTask.calExecuteDur()
+    #         #         calTask.cmpltTime = taskInfoUnit.changeRateTime + executePeriod
+    #         # executePeriod = calTask.cmpltTime - rob.leaveTime - onRoadPeriod
+    #         # resTuple = OnTaskInfoClass(vaild=True, time=executePeriod, rate=calTask.cRate)
+    #         # if len(delIndexLst):
+    #         #     self._delDict[(robID, taskID)] = delIndexLst
+    #     #                print(self._delDict)
+    #     else:
+    #         vaild = calTask.calCurrentState(rob.leaveTime + preOnRoadPeriod)
+    #         cRate = sys.float_info.max
+    #         executePeriod = sys.float_info.max
+    #         if vaild == True:
+    #             calTask.cRate = calTask.cRate - robAbi
+    #             if calTask.cRate >= 0:
+    #                 executePeriod = sys.float_info.max
+    #             else:
+    #                 executePeriod = calTask.calExecuteDur()
+    #             cRate = calTask.cRate
+    #         resTuple = OnTaskInfoTuple(changeRateTime=calTask.changeRateTime, vaild = vaild,
+    #                                    executePeriod = executePeriod, cRate = cRate)
+    #
+    #     self.taskVariableDic[(robID, taskID)] = calTask.variableInfo()
+    #     return resTuple
+    #     '''
+    #     此处还没有调试清楚
+    #     '''
+    #     return random.random()
 
     def _calCurrentMakespan(self,robID,taskID):
         rob = self._robotLst[robID]
@@ -220,8 +320,6 @@ class MPDA_DE_decode(object):
         task = self._taskLst[taskID]
         self._calRob2TaskOnRoadPeriod(robID,taskID)
         pass
-
-
 
     def _sortLst(self,lst = [],keyFunc =  lambda x : x[1], reverseBoolean = False):
         lst = sorted(lst,key=keyFunc,reverse=reverseBoolean)
@@ -238,6 +336,115 @@ class MPDA_DE_decode(object):
                 orderInd = index
                 dic[unit[0]] = orderInd
         return dic
+    def _calActionSeq(self,robID,taskID,preOnRoadPeriod):
+        rob = self._robotLst[robID]
+        robAbi = rob.ability
+        preDictActTime = rob.leaveTime + preOnRoadPeriod
+        if preDictActTime > self._actionSeq.actionTime:
+            calTask = copy.deepcopy(self._taskLst[taskID])
+            vaild = calTask.calCurrentState(rob.leaveTime + preOnRoadPeriod)
+            cRate = sys.float_info.max
+            executePeriod = sys.float_info.max
+            if vaild == True:
+                calTask.cRate = calTask.cRate - robAbi
+                if calTask.cRate >= 0:
+                    executePeriod = sys.float_info.max
+                else:
+                    executePeriod = calTask.calExecuteDur()
+                cRate = calTask.cRate
+            '''
+            bug??
+            '''
+            # print('executePeriod = ', executePeriod)
+            cmplt_time = preDictActTime + executePeriod
+            # raise Exception("dsadsa")
+            action_tuple_lst = []
+            action_tuple_lst.append(ActionTuple(robID = robID, taskID = taskID, eventType=EventType.arrive,eventTime= preDictActTime))
+            action_tuple_lst.append(ActionTuple(robID = robID, taskID = taskID, eventType=EventType.leave, eventTime= cmplt_time))
+            self._predictActionSeq[RobTaskPair(robID= robID,taskID=taskID)] = action_tuple_lst
+            self._predictActionSeqType[RobTaskPair(robID= robID,taskID=taskID)] = ActionSeqType.InOrder
+
+            self._predictOnTaskPeriod[RobTaskPair(robID= robID,taskID=taskID)] = executePeriod
+
+            self.taskVariableDic[RobTaskPair(robID= robID, taskID=taskID)] = calTask.variableInfo()
+
+            return executePeriod
+
+            # ActionSeq =
+            '''
+            deepcopy 存在问题
+            '''
+            pass
+        else:
+
+            raise Exception("nothingf")
+
+    def _updateSol(self,rob_task_pair = RobTaskPair(robID= -1,taskID= -1)):
+        robID = rob_task_pair.robID
+        taskID = rob_task_pair.taskID
+        predictTaskCmpltTime = INF_NUM
+        rob = self._robotLst[robID]
+        task = self._taskLst[taskID]
+        if self._predictActionSeqType[rob_task_pair] == ActionSeqType.InOrder:
+
+            self._actionSeq.extend(self._predictActionSeq[rob_task_pair])
+            rob.taskID = taskID
+            rob.encodeIndex += 1
+            onRoadPeriod = self._calRob2TaskOnRoadPeriod(robID,taskID)
+            onTaskPeriod = self._predictOnTaskPeriod[rob_task_pair]
+            self._allocatedLst.append(rob_task_pair)
+            rob.arriveTime = rob.leaveTime + onRoadPeriod
+            print(self.taskVariableDic[rob_task_pair])
+            task.recover(*self.taskVariableDic[rob_task_pair])
+            print(task)
+
+            # self._actionSeq.
+            # raise  Exception("在这里终结")
+            # self.taskVariableDic
+            # self.taskVariableDic
+        else:
+            pass
+            raise  Exception('dashdkj')
+
+        predictTaskCmpltTime = task.cmpltTime
+        '''
+        '''
+        if predictTaskCmpltTime == INF_NUM:
+            return SelectType.OneTask,taskID
+            pass
+        else:
+            return SelectType.AllTask,INF_NUM
+
+
+
+    def _calActionSeqStatus(self,action_seq = ActionSeq()):
+
+        taskLst  = copy.copy(self._initTaskLst)
+        robLst = copy.copy(self._initRobLst)
+
+        '''
+        debug 版本的计算模式
+        '''
+        for action_tuple in action_seq.seq:
+            task = taskLst[action_tuple.taskID]
+            if action_tuple.eventType == EventType.arrive:
+                rob = robLst[action_tuple.robID]
+                task.calRobArrive(action_tuple.eventTime,rob.ability)
+            elif action_tuple.eventType == EventType.leave:
+                pass
+                if task.cmpltTime == action_tuple.eventTime:
+                     pass
+                else:
+                    raise  Exception("sadjsakhdjksahdkj")
+                    pass
+            else:
+                raise  Exception("why 不应该哈")
+
+                # action_tuple.
+
+
+        pass
+
 
 
 if __name__ == '__main__':

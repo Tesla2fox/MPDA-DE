@@ -21,6 +21,7 @@ ActionTuple = namedtuple('ActionTuple',['robID','taskID','eventType','eventTime'
 class ActionSeq(object):
     def __init__(self):
         self._seq = []
+        self._actionTime = 0
     @property
     def seq(self):
         return self._seq
@@ -39,8 +40,14 @@ class ActionSeq(object):
     def append(self,action_tuple):
         if type(action_tuple) != ActionTuple:
             raise TypeError('tuple must be ActionTuple')
+        elif action_tuple.eventTime < self.actionTime:
+            raise Exception('time is out of order in action seq ')
         else:
             self._seq.append(action_tuple)
+
+    def extend(self,action_tuple_lst = []):
+        for action_tuple in action_tuple_lst:
+            self.append(action_tuple)
 
     def __getitem__(self, item):
         return self._seq[item]
@@ -53,6 +60,19 @@ class ActionSeq(object):
         for x in self._seq:
             res_str = res_str + str(x) +'\n'
         return res_str
+    def clear(self):
+        self._seq.clear()
+        self._actionTime = 0
+    @property
+    def actionTime(self):
+        if len(self._seq) == 0:
+            self._actionTime = 0
+        else:
+            self._actionTime = self._seq[-1].eventTime
+        return self._actionTime
+    @actionTime.setter
+    def actionTime(self,action_time):
+        self._actionTime = action_time
 
 
 if __name__ == '__main__':

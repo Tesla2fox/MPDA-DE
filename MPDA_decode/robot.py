@@ -47,7 +47,7 @@ class Robot():
         self.taskID = taskID
         self.stateType =  stateType
         self.stopBool = stopBool
-        self.executeBool = stopBool        
+        self.executeBool = executeBool
         self.cmpltTaskID = cmpltTaskID
         self.cmpltTaskLst = cmpltTaskLst
     def __str__(self):
