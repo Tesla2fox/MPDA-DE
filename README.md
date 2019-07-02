@@ -142,6 +142,9 @@ MPDA - GENTIC ALGORITHMS 是否可以参考郭博士的 GA
 
 
 
+浅拷贝和深拷贝 为什么还是存在问题？？？
+
+
 ### 编程中可以优化的部分
 
 1. actionSeq 在调用ACTIONtime 的时候 没有必要每次都进行计算 = =

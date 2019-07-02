@@ -246,8 +246,10 @@ class MPDA_DE_decode(object):
             task.cmpltTime = sys.float_info.max
             self._taskLst.append(task)
         self._decodeTime = 0
-        self._initTaskLst = copy.copy(self._taskLst)
-        self._initRobLst = copy.copy(self._robotLst)
+
+
+        self._initTaskLst = [copy.copy(x) for x in self._taskLst]
+        self._initRobLst = [copy.copy(x) for x in self._robotLst]
 
         # logging.debug("init success")
 
@@ -455,8 +457,15 @@ class MPDA_DE_decode(object):
 
     def _calActionSeqStatus(self,action_seq = ActionSeq()):
 
-        taskLst  = copy.copy(self._initTaskLst)
-        robLst = copy.copy(self._initRobLst)
+        # taskLst  = copy.copy(self._initTaskLst)
+        # robLst = copy.copy(self._initRobLst)
+
+
+        taskLst = [copy.copy(x) for x in self._initTaskLst]
+        robLst = [copy.copy(x) for x in self._initRobLst]
+
+        for task in taskLst:
+            print(task)
 
         task_seq = TaskSeq()
 
@@ -465,14 +474,16 @@ class MPDA_DE_decode(object):
         '''
         for action_tuple in action_seq.seq:
             task = taskLst[action_tuple.taskID]
+            print('taskID = ',action_tuple.taskID)
             if action_tuple.eventType == EventType.arrive:
                 rob = robLst[action_tuple.robID]
                 '''
                 debug yong
                 '''
+                b_rate = task.cRate
                 task.calRobArrive(action_tuple.eventTime,rob.ability)
                 task_status_tuple  = TaskStatusTuple(taskID=action_tuple.taskID,cState=task.cState,
-                                                     cRate= task.cRate, time = action_tuple.eventTime)
+                                                     cRate= task.cRate, bRate = b_rate,time = action_tuple.eventTime)
                 task_seq.append(task_status_tuple)
                 print("cmpltTime= ", task.cmpltTime)
             elif action_tuple.eventType == EventType.leave:
@@ -488,7 +499,13 @@ class MPDA_DE_decode(object):
                 raise Exception("why 不应该哈")
                 # action_tuple.
 
+
         task_seq.drawPlot(BaseDir + '\\plot\\actionSeq')
+        f_deg = open(BaseDir + '\\debugData\\task_seq.txt','w')
+        f_deg.write(str(task_seq))
+        f_deg.flush()
+        f_deg.close()
+        raise  Exception("sadsal")
         pass
 
 

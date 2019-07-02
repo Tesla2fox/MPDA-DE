@@ -30,6 +30,9 @@ RobTaskPair = namedtuple('TaskRobPair',['robID','taskID'])
 
 
 class ActionSeq(object):
+
+    _modelType = {TaskModelType.ExpModel: '_expCal',
+                 TaskModelType.LineModel: '_lineCal'}
     def __init__(self):
         self._seq = []
         self._actionTime = 0
@@ -146,7 +149,11 @@ class ActionSeq(object):
 任务的状态变化序列来完整的表示一个解
 '''
 
-TaskStatusTuple = namedtuple('TaskStatusTuple',['taskID','cState','cRate','time'])
+'''
+bRate 表示之前的rate值
+'''
+
+TaskStatusTuple = namedtuple('TaskStatusTuple',['taskID','cState','cRate','bRate','time'])
 
 class TaskSeq(object):
     # _taskNum = sys.int_info.max
@@ -168,7 +175,7 @@ class TaskSeq(object):
 
         for taskID in range(ins.taskNum):
             task_status_tuple = TaskStatusTuple(taskID = taskID, cState= ins.taskStateLst[taskID],
-                                                cRate= ins.taskRateLst[taskID], time = 0)
+                                                cRate= ins.taskRateLst[taskID],bRate = 0, time = 0)
             self._taskSeq.append(task_status_tuple)
 
     @property
@@ -227,16 +234,29 @@ class TaskSeq(object):
 
         taskTimeLst = [[] for x in range(TaskSeq._ins.taskNum)]
         taskStateLst = [[] for x in range(TaskSeq._ins.taskNum)]
+        taskStateTupleLst  = [[] for x in range(TaskSeq._ins.taskNum)]
 
-        for task_seq in self._taskSeq:
-            taskTimeLst[task_seq.taskID].append(task_seq.time)
-            taskStateLst[task_seq.taskID].append(task_seq.cState)
 
+        for task_tuple in self._taskSeq:
+            taskStateTupleLst[task_tuple.taskID].append(task_tuple)
+
+        for taskID,task_lst in enumerate(taskStateTupleLst):
+            if len(task_lst) == 0:
+                continue
+            taskTimeLst[taskID].append(task_lst[0].time)
+            taskStateLst[taskID].append(task_lst[0].cState)
+            for i in range(len(task_lst) - 1):
+                time_lst,state_lst = self._discretePoint(task_lst[i],task_lst[i+1])
+                taskTimeLst[taskID].extend(time_lst)
+                taskStateLst[taskID].extend(state_lst)
+            # if len()
+
+        # print(taskTimeLst)
+        # print(taskStateLst)
         figData = []
         for taskID in range(TaskSeq._ins.taskNum):
-            trace = go.Scatter(mode = 'lines+markers', x = taskTimeLst[task_seq.taskID], y = taskStateLst[task_seq.taskID])
-
-        figData.append(trace)
+            trace = go.Scatter(mode = 'lines', x = taskTimeLst[taskID], y = taskStateLst[taskID])
+            figData.append(trace)
 
         layout = dict()
         layout['xaxis'] = dict( title = 'time')
