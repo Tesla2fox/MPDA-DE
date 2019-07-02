@@ -10,12 +10,11 @@ import  random as rd
 from collections import  namedtuple
 import  random
 import  copy
-from MPDA_decode.deSolution import ActionSeq,ActionTuple,EventType
+from MPDA_decode.action import ActionSeq,ActionTuple,EventType,RobTaskPair,TaskSeq,TaskStatusTuple
 from enum import Enum
 # import logging
 
 
-RobTaskPair = namedtuple('TaskRobPair',['robID','taskID'])
 OnTaskInfoTuple = namedtuple('OnTaskInfoTuple',['changeRateTime','cRate','robID','robAbi'])
 
 INF_NUM = sys.float_info.max
@@ -34,6 +33,13 @@ class ActionSeqType(Enum):
 random
 '''
 random.seed(1)
+
+AbsolutePath = os.path.abspath(__file__)
+# 将相对路径转换成绝对路径
+SuperiorCatalogue = os.path.dirname(AbsolutePath)
+# 相对路径的上级路径
+BaseDir = os.path.dirname(SuperiorCatalogue)
+
 
 class MPDA_DE_decode(object):
     _ins = object
@@ -63,6 +69,8 @@ class MPDA_DE_decode(object):
         self._robotLst = []
         self._cmpltLst = []
         self._actionSeq = ActionSeq()
+        self._taskSeq = TaskSeq()
+
         # logging.basicConfig(level=logging.DEBUG)
     def decode(self,encode):
         self._encode = encode
@@ -86,11 +94,25 @@ class MPDA_DE_decode(object):
 
         select_type = SelectType.AllTask
         select_taskID = INF_NUM
+
+        select_times = 1
         while not self._calEndCondition():
+            print("select_times = ", select_times)
             pairCandidate = self._selectRobTaskPair(select_type= select_type,select_taskID = select_taskID)
+            print("select_times = ", select_times, " selectSuccess")
             if pairCandidate == RobTaskPair(robID=INF_NUM,taskID=INF_NUM):
                 break
             select_type,select_taskID = self._updateSol(pairCandidate)
+            print("actionSeq = ",self._actionSeq)
+            print("actionTime = ",self._actionSeq.actionTime)
+            if self._actionSeq.actionTime == sys.float_info.max:
+                raise  Exception("行动序列的时间不应该为无穷")
+            print("select_times = ", select_times, " updateSuccess")
+
+
+            select_times += 1
+
+
             # break
             # pass
 
@@ -191,6 +213,7 @@ class MPDA_DE_decode(object):
         print('minRobTaskPair= ',minRobTaskPair)
         # logging.debug(minRobTaskPair)
         # raise  Exception("sad")
+
         return minRobTaskPair
         # return RobTaskPair(robID=-1,taskID= -1)
     def _initState(self):
@@ -340,7 +363,7 @@ class MPDA_DE_decode(object):
         rob = self._robotLst[robID]
         robAbi = rob.ability
         preDictActTime = rob.leaveTime + preOnRoadPeriod
-        if preDictActTime > self._actionSeq.actionTime:
+        if preDictActTime >= self._actionSeq.actionTime:
             calTask = copy.deepcopy(self._taskLst[taskID])
             vaild = calTask.calCurrentState(rob.leaveTime + preOnRoadPeriod)
             cRate = sys.float_info.max
@@ -360,7 +383,9 @@ class MPDA_DE_decode(object):
             # raise Exception("dsadsa")
             action_tuple_lst = []
             action_tuple_lst.append(ActionTuple(robID = robID, taskID = taskID, eventType=EventType.arrive,eventTime= preDictActTime))
-            action_tuple_lst.append(ActionTuple(robID = robID, taskID = taskID, eventType=EventType.leave, eventTime= cmplt_time))
+            if executePeriod != INF_NUM:
+                action_tuple_lst.append(ActionTuple(robID = robID, taskID = taskID, eventType=EventType.leave, eventTime= cmplt_time))
+
             self._predictActionSeq[RobTaskPair(robID= robID,taskID=taskID)] = action_tuple_lst
             self._predictActionSeqType[RobTaskPair(robID= robID,taskID=taskID)] = ActionSeqType.InOrder
 
@@ -376,6 +401,11 @@ class MPDA_DE_decode(object):
             '''
             pass
         else:
+            print("preDictActTime = ",preDictActTime)
+            print("self._actionSeq.actionTime = ",self._actionSeq.actionTime)
+            # test
+            action_seq = copy.copy(self._actionSeq)
+            self._calActionSeqStatus(action_seq)
 
             raise Exception("nothingf")
 
@@ -388,6 +418,10 @@ class MPDA_DE_decode(object):
         if self._predictActionSeqType[rob_task_pair] == ActionSeqType.InOrder:
 
             self._actionSeq.extend(self._predictActionSeq[rob_task_pair])
+            if len(self._predictActionSeq[rob_task_pair]) == 1:
+                self._actionSeq.infEventAppend(rob_task_pair)
+            else:
+                self._actionSeq.eventComplement()
             rob.taskID = taskID
             rob.encodeIndex += 1
             onRoadPeriod = self._calRob2TaskOnRoadPeriod(robID,taskID)
@@ -397,6 +431,8 @@ class MPDA_DE_decode(object):
             print(self.taskVariableDic[rob_task_pair])
             task.recover(*self.taskVariableDic[rob_task_pair])
             print(task)
+
+
 
             # self._actionSeq.
             # raise  Exception("在这里终结")
@@ -422,6 +458,8 @@ class MPDA_DE_decode(object):
         taskLst  = copy.copy(self._initTaskLst)
         robLst = copy.copy(self._initRobLst)
 
+        task_seq = TaskSeq()
+
         '''
         debug 版本的计算模式
         '''
@@ -429,37 +467,51 @@ class MPDA_DE_decode(object):
             task = taskLst[action_tuple.taskID]
             if action_tuple.eventType == EventType.arrive:
                 rob = robLst[action_tuple.robID]
+                '''
+                debug yong
+                '''
                 task.calRobArrive(action_tuple.eventTime,rob.ability)
+                task_status_tuple  = TaskStatusTuple(taskID=action_tuple.taskID,cState=task.cState,
+                                                     cRate= task.cRate, time = action_tuple.eventTime)
+                task_seq.append(task_status_tuple)
+                print("cmpltTime= ", task.cmpltTime)
             elif action_tuple.eventType == EventType.leave:
-                pass
+                # pass
                 if task.cmpltTime == action_tuple.eventTime:
-                     pass
+                    pass
                 else:
-                    raise  Exception("sadjsakhdjksahdkj")
+                    print("taskcmpltTime = ", task.cmpltTime)
+                    print("actionTupleTime = ",action_tuple.eventTime)
+                    # raise Exception("sadjsakhdjksahdkj")
                     pass
             else:
-                raise  Exception("why 不应该哈")
-
+                raise Exception("why 不应该哈")
                 # action_tuple.
 
-
+        task_seq.drawPlot(BaseDir + '\\plot\\actionSeq')
         pass
 
 
 
+
+
+
+
+
 if __name__ == '__main__':
-    AbsolutePath = os.path.abspath(__file__)
-    # 将相对路径转换成绝对路径
-    SuperiorCatalogue = os.path.dirname(AbsolutePath)
-    # 相对路径的上级路径
-    BaseDir = os.path.dirname(SuperiorCatalogue)
     insName = '14_14_ECCENTRIC_RANDOMCLUSTERED_SVLCV_LVLCV_thre0.1MPDAins.dat'
     ins = Instance(BaseDir + '\\benchmark\\' + insName)
     MPDA_DE_decode._ins = ins
+    TaskSeq._ins = ins
 
     mpda_de_decode = MPDA_DE_decode()
 
     encode = [rd.random() for x in range(ins.robNum * 3)]
+
+    # task_seq = TaskSeq()
+    # task_seq.drawPlot()
+    #
+    # raise Exception("test_")
 
     # print(encode)
     # logging.info("encode = " + str(encode))

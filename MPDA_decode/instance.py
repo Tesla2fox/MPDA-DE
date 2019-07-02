@@ -6,6 +6,14 @@ Created on Fri Sep 21 15:49:17 2018
 """
 from readCfg import  *
 import numpy as np
+from  enum import  Enum
+
+class TaskModelType(Enum):
+    ExpModel = 1
+    LineModel = 2
+
+
+
 
 class Instance(object):
     def __init__(self, insFileName = 'wtf'):
@@ -39,6 +47,8 @@ class Instance(object):
             for j in range(self.taskNum):
                 self.taskDisMat[i][j] = disLst[i*self.taskNum+j]
         # self.decode = DecodeSS(self.insFileName)
+        self.taskModelType = TaskModelType.ExpModel
+
     def __str__(self):
         return self.insFileName + '\n robNum = '+ str(self.robNum) +' task =' +str(self.taskNum)
     def __eq__(self,other):

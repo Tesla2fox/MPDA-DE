@@ -8,6 +8,7 @@ inh is an abbreviation for inherent
 import math
 import sys
 import copy
+from collections import namedtuple
 
 def getTaskDic():
     dic = dict()
@@ -24,7 +25,6 @@ def getTaskDic():
 
 
 class Task():
-
     _model = {'exp': '_expModel',
                  'line': '_lineModel'}
     def __init__(self):
@@ -94,6 +94,7 @@ class Task():
             else:
                 execute_dur = self.calExecuteDur()
                 leave_time = arrive_time + execute_dur
+            self.cmpltTime = leave_time
         else:
             raise Exception("计算行动序列的时候不应该出错")
         return leave_time
@@ -161,6 +162,13 @@ class Task():
             return True
         else:
             return False
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     tsk = Task()
