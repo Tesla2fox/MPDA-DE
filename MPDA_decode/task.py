@@ -8,6 +8,7 @@ inh is an abbreviation for inherent
 import math
 import sys
 import copy
+
 from collections import namedtuple
 
 def getTaskDic():
@@ -53,6 +54,8 @@ class Task():
 
     def calExecuteDur(self):
 #        print(self.threhod)
+        if math.isclose(self.threhod,self.cState):
+            return 0
         e_dur = math.log(self.threhod/self.cState)/self.cRate
 #        print(self.threhod)
 #        print(self.cState)

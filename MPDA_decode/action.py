@@ -4,6 +4,7 @@ import  sys
 from  enum import Enum
 from MPDA_decode.instance import Instance,TaskModelType
 import numpy
+import math
 
 import plotly.plotly as py
 import plotly.graph_objs as go
@@ -15,6 +16,11 @@ import plotly.io as pio
 class EventType(Enum):
     arrive = 1
     leave = 2
+
+
+
+class InvalidType(Enum):
+    Rate =  1
 
 class SolutionDe(object):
     _taskNum = 0
@@ -136,7 +142,21 @@ class ActionSeq(object):
                     raise Exception("补全事件的时候存在问题")
         self._infEvent.clear()
 
-    # @infEvent.
+    def invalidEventTilTime(self,event_time):
+        invalidEventNum = 0
+        # d = list(range())
+        for i in range(len(self._seq)- 1,-1,-1):
+            action_time = self._seq[i].eventTime
+            if event_time > action_time or math.isclose(event_time,action_time):
+                break
+            invalidEventNum += 1
+        return  invalidEventNum
+
+    def delActionEvent(self,invalidEventNum):
+        while invalidEventNum > 0:
+            self._seq.pop()
+            invalidEventNum -= 1
+
 
 
 
@@ -246,6 +266,8 @@ class TaskSeq(object):
             taskTimeLst[taskID].append(task_lst[0].time)
             taskStateLst[taskID].append(task_lst[0].cState)
             for i in range(len(task_lst) - 1):
+                if task_lst[i].cRate == InvalidType.Rate:
+                    continue
                 time_lst,state_lst = self._discretePoint(task_lst[i],task_lst[i+1])
                 taskTimeLst[taskID].extend(time_lst)
                 taskStateLst[taskID].extend(state_lst)

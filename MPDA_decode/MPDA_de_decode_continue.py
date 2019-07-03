@@ -10,7 +10,7 @@ import  random as rd
 from collections import  namedtuple
 import  random
 import  copy
-from MPDA_decode.action import ActionSeq,ActionTuple,EventType,RobTaskPair,TaskSeq,TaskStatusTuple
+from MPDA_decode.action import ActionSeq,ActionTuple,EventType,RobTaskPair,TaskSeq,TaskStatusTuple,InvalidType
 from enum import Enum
 # import logging
 
@@ -28,6 +28,7 @@ class SelectType(Enum):
 class ActionSeqType(Enum):
     InOrder =  1
     OutOfOrder = 2
+
 
 '''
 random
@@ -75,7 +76,6 @@ class MPDA_DE_decode(object):
     def decode(self,encode):
         self._encode = encode
         self._initState()
-
 
         self.decodeProcessor()
         raise  Exception("debug")
@@ -406,9 +406,20 @@ class MPDA_DE_decode(object):
             print("preDictActTime = ",preDictActTime)
             print("self._actionSeq.actionTime = ",self._actionSeq.actionTime)
             # test
-            action_seq = copy.copy(self._actionSeq)
-            self._calActionSeqStatus(action_seq)
+            print(self._actionSeq)
+            invalidEventNum = self._actionSeq.invalidEventTilTime(preDictActTime)
 
+            print("invalidEventNum = ",invalidEventNum)
+            action_seq = copy.deepcopy(self._actionSeq)
+
+            action_seq.delActionEvent(invalidEventNum)
+
+            action_seq.append(ActionTuple(robID = robID, taskID = taskID, eventType=EventType.arrive,eventTime= preDictActTime))
+            print(action_seq)
+            print(self._actionSeq)
+            # raise  Exception()
+            # action_seq = copy.copy(self._actionSeq)
+            self._calActionSeqStatus(action_seq)
             raise Exception("nothingf")
 
     def _updateSol(self,rob_task_pair = RobTaskPair(robID= -1,taskID= -1)):
@@ -433,9 +444,6 @@ class MPDA_DE_decode(object):
             print(self.taskVariableDic[rob_task_pair])
             task.recover(*self.taskVariableDic[rob_task_pair])
             print(task)
-
-
-
             # self._actionSeq.
             # raise  Exception("在这里终结")
             # self.taskVariableDic
@@ -459,8 +467,6 @@ class MPDA_DE_decode(object):
 
         # taskLst  = copy.copy(self._initTaskLst)
         # robLst = copy.copy(self._initRobLst)
-
-
         taskLst = [copy.copy(x) for x in self._initTaskLst]
         robLst = [copy.copy(x) for x in self._initRobLst]
 
@@ -490,10 +496,17 @@ class MPDA_DE_decode(object):
                 # pass
                 if task.cmpltTime == action_tuple.eventTime:
                     pass
+                    task.calRobArrive(action_tuple.eventTime,0)
+
+                    task_status_tuple  = TaskStatusTuple(taskID=action_tuple.taskID,cState=task.cState,
+                                                     cRate= InvalidType.Rate , bRate = task.cRate,time = action_tuple.eventTime)
+                    task_seq.append(task_status_tuple)
+
                 else:
                     print("taskcmpltTime = ", task.cmpltTime)
                     print("actionTupleTime = ",action_tuple.eventTime)
-                    # raise Exception("sadjsakhdjksahdkj")
+
+                    raise Exception("sadjsakhdjksahdkj")
                     pass
             else:
                 raise Exception("why 不应该哈")
@@ -503,6 +516,7 @@ class MPDA_DE_decode(object):
         task_seq.drawPlot(BaseDir + '\\plot\\actionSeq')
         f_deg = open(BaseDir + '\\debugData\\task_seq.txt','w')
         f_deg.write(str(task_seq))
+        f_deg.write(str(action_seq))
         f_deg.flush()
         f_deg.close()
         raise  Exception("sadsal")

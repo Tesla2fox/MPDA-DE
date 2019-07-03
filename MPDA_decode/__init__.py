@@ -6,7 +6,7 @@
 
 from MPDA_decode import  basicDecdoe
 from MPDA_decode.instance import  Instance
-from MPDA_decode.MPDA_de_decode import  MPDA_DE_decode
+from MPDA_decode.MPDA_de_decode_continue import  MPDA_DE_decode
 
 # __all__ = ["algorithms", "benchmarks", "util", "task", "Runner"]
 
