@@ -12,6 +12,7 @@ import  random
 import  copy
 from MPDA_decode.action import ActionSeq,ActionTuple,EventType,RobTaskPair,TaskSeq,TaskStatusTuple,InvalidType
 from enum import Enum
+import numpy
 # import logging
 
 
@@ -76,7 +77,6 @@ class MPDA_DE_decode(object):
     def decode(self,encode):
         self._encode = encode
         self._initState()
-
         self.decodeProcessor()
         raise  Exception("debug")
         try:
@@ -91,12 +91,12 @@ class MPDA_DE_decode(object):
     def decodeProcessor(self):
         self._allocatedLst = []
         # raise Exception("???")
-
         select_type = SelectType.AllTask
         select_taskID = INF_NUM
 
         select_times = 1
         while not self._calEndCondition():
+
             print("select_times = ", select_times)
             pairCandidate = self._selectRobTaskPair(select_type= select_type,select_taskID = select_taskID)
             print("select_times = ", select_times, " selectSuccess")
@@ -250,7 +250,8 @@ class MPDA_DE_decode(object):
 
         self._initTaskLst = [copy.copy(x) for x in self._taskLst]
         self._initRobLst = [copy.copy(x) for x in self._robotLst]
-
+        self._robActionLst =  [[] for x in range(self._ins.robNum)]
+        # self._discreteEncode  = -numpy.ones((ins.robNum,ins.taskNum),dtype=)
         # logging.debug("init success")
 
 
@@ -265,6 +266,12 @@ class MPDA_DE_decode(object):
         leaveTimeLst = [rob.leaveTime for rob in self._robotLst]
         makespan = max(leaveTimeLst)
         return makespan
+    def _robActionSeqLst2DiscreteEncode(self):
+        _discreteEncodeRes = -numpy.ones((self.robNum,self.taskNum),dtype=int)
+        for robID,robActionSeq_ in enumerate(self._robActionLst):
+            for robEncodeInd,robAction_ in enumerate(robActionSeq_):
+                _discreteEncodeRes[robID][robEncodeInd] = robAction_
+        return _discreteEncodeRes
 
     def _calRob2TaskOnRoadPeriod(self,robID,taskID):
         rob = self._robotLst[robID]
@@ -444,6 +451,7 @@ class MPDA_DE_decode(object):
             print(self.taskVariableDic[rob_task_pair])
             task.recover(*self.taskVariableDic[rob_task_pair])
             print(task)
+            self._robActionLst[robID].append(taskID)
             # self._actionSeq.
             # raise  Exception("在这里终结")
             # self.taskVariableDic

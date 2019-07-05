@@ -163,3 +163,4 @@ MPDA - GENTIC ALGORITHMS 是否可以参考郭博士的 GA
 类内变量 类变量
 继承之后的情况是什么样子的？？
 
+super 函数 是super 自己啦

@@ -158,6 +158,55 @@ class ActionSeq(object):
             invalidEventNum -= 1
 
 
+    def examinationSelf(self):
+        if len(self._seq):
+            print(len(self._seq))
+            lst = []
+            action_ = self._seq[0]
+            lst.append(RobTaskPair(action_.robID,action_.taskID))
+            for actionID in range(1,len(self._seq)):
+
+                if action_.eventTime < self._seq[actionID].eventTime or math.isclose(action_.eventTime,self._seq[actionID].eventTime):
+                    action_  = self._seq[actionID]
+                else:
+                    print("action_.eventTime = ",action_.eventTime)
+                    print("self._seq[actionID] = ",self._seq[actionID].eventTime)
+                    raise Exception("examination  _bug")
+                if action_.eventType == EventType.arrive:
+                    lst.append(RobTaskPair(action_.robID,action_.taskID))
+                else:
+                    # print("robTaskPair =",RobTaskPair(action_.robID, action_.taskID))
+                    # print("Lst = ",lst)
+                    lst.remove(RobTaskPair(action_.robID, action_.taskID))
+
+            if len(lst):
+                print(lst)
+                raise Exception('lst problem')
+                pass
+            else:
+                pass
+        else:
+            raise  Exception("examination _bug ")
+        return True
+
+
+    def actionSeq2DiscreteEncode(self,robNum = -1,taskNum = -1):
+        encodeRes =  -numpy.ones((robNum,taskNum),dtype = int)
+        robEncodeIndLst = [0 for x in range(robNum)]
+        for action_ in self._seq:
+            if action_.eventType == EventType.arrive:
+                encodeRes[action_.robID][robEncodeIndLst[action_.robID]] = action_.taskID
+                robEncodeIndLst[action_.robID] += 1
+        return encodeRes
+
+    def actionSeq2RobActionLst(self,robNum = -1):
+        robActionLstRes = [[] for x in range(robNum)]
+        for action_ in self._seq:
+            if action_.eventType == EventType.arrive:
+                robActionLstRes[action_.robID] = action_.taskID
+        return robActionLstRes
+
+
 
 
 
