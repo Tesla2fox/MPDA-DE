@@ -164,3 +164,43 @@ MPDA - GENTIC ALGORITHMS 是否可以参考郭博士的 GA
 继承之后的情况是什么样子的？？
 
 super 函数 是super 自己啦
+
+
+
+
+
+
+
+>>> class A(object):
+>>>         def foo1(self):
+>>>             print "Hello",self
+>>>         @staticmethod
+>>>         def foo2():
+>>>             print "hello"
+>>>         @classmethod
+>>>         def foo3(cls):
+>>>             print "hello",cls
+
+
+>>> a = A()
+
+>>> a.foo1()          #最常见的调用方式，但与下面的方式相同
+>>> Hello <__main__.A object at 0x9f6abec>
+
+>>> A.foo1(a)         #这里传入实例a，相当于普通方法的self
+>>> Hello <__main__.A object at 0x9f6abec>
+
+>>> A.foo2()          #这里，由于静态方法没有参数，故可以不传东西
+>>> hello
+
+>>> A.foo3()          #这里，由于是类方法，因此，它的第一个参数为类本身。
+>>> hello <class '__main__.A'>
+
+>>> A                 #可以看到，直接输入A，与上面那种调用返回同样的信息。
+>>> <class '__main__.A'>
+---------------------
+作者：daijiguo 
+来源：CSDN 
+原文：https://blog.csdn.net/daijiguo/article/details/78499422 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
