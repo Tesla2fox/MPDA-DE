@@ -143,7 +143,7 @@ class MPDA_Decode_Discrete_Base(object):
         invalidFitness = False
         backBool = False
         validStateBool = True
-        while not self._calEndCondition():
+        while not self._calEndCond():
             cal_type, actionID = self.findActionID()
             if cal_type == CalType['arriveCond']:
                 # =============================================================================
@@ -155,8 +155,11 @@ class MPDA_Decode_Discrete_Base(object):
                 encodeInd = rob.encodeIndex
                 taskID = self.encode[actionID][encodeInd]
 
-                self._actionSeq.append(ActionTuple(robID= actionID,taskID = taskID,
-                                                   eventType = EventType.arrive,eventTime=arriveTime))
+                # try:
+                # except Exception as e:
+                #     print(e)
+
+
 
                 # ActionTuple
                 if self.taskCmplt(taskID):
@@ -190,6 +193,9 @@ class MPDA_Decode_Discrete_Base(object):
                     rob.leaveTime = leaveTime
                     rob.stateType = RobotState['onTask']
                     self.decodeTime = rob.arriveTime
+                    self._actionSeq.append(ActionTuple(robID= actionID,taskID = taskID,
+                                                   eventType = EventType.arrive,eventTime=arriveTime))
+
             # =============================================================================
             #  begin the leave condition for
             # =============================================================================
@@ -208,6 +214,7 @@ class MPDA_Decode_Discrete_Base(object):
                 #                                    eventType = EventType.leave,eventTime=arriveTime))
                 if self.cmpltLst[taskID] == True:
                     self.leaveCmpltTask(actionID)
+                    # raise  Exception('leaveCmpltTask')
                 #                    print(self.cmpltLst)
                 #                    validStateBool = True
                 #                    while True:
@@ -243,11 +250,14 @@ class MPDA_Decode_Discrete_Base(object):
 
                 task.cmpltTime = rob.leaveTime
                 self.decodeTime = rob.leaveTime
+                if self._actionSeq.actionTime != self.decodeTime:
+                    raise  Exception('=d=')
             #                print(taskID,' cmpltTime ', task.cmpltTime)
             if cal_type == CalType['endCond']:
                 invalidFitness = True
                 #                raise Exception('end-Condition-bug, robots have been stuck')
-                raise RobotStuckException()
+                # print(self._actionSeq)
+                # raise RobotStuckException()
                 break
             if cal_type == CalType['backCond']:
                 backBool = True
@@ -287,12 +297,13 @@ class MPDA_Decode_Discrete_Base(object):
         else:
             return True
 
-    def _calEndCondition(self):
+    def _allRobStop(self):
         for rob in self.robotLst:
             if rob.stopBool == False:
                 return False
         return True
-
+    def _calEndCond(self):
+        pass
     def findActionID(self):
         cal_type = CalType['endCond']
         actionID = -1
@@ -422,6 +433,7 @@ class MPDA_Decode_Discrete_Base(object):
                 break
         return taskID, encodeIndex, stopBool
 
+
     def calMakespan(self):
         # makespan for the MPDA problem
         leaveTimeLst = [rob.leaveTime for rob in self.robotLst]
@@ -496,16 +508,24 @@ class MPDA_Decode_Discrete_NB(MPDA_Decode_Discrete_Base):
         # raise  Exception("xxx")
         pass
 
+    def leaveCmpltTask(self, actionID):
+        self.updateRobLeaveCond(actionID)
+        # raise Exception('leaveCmpltTask')
+
     def arriveCmpltTask(self,actionID,encodeInd):
         rob = self.robotLst[actionID]
         rob.leaveTime = rob.arriveTime
         rob.stateType = RobotState['onTask']
         self.decodeTime = rob.arriveTime
-
+        taskID = rob.taskID
+        arriveTime = rob.arriveTime
+        self._actionSeq.append(ActionTuple(robID=actionID, taskID=taskID,
+                                       eventType=EventType.arrive, eventTime=arriveTime))
 
     def decode(self,encode):
         self.encode = encode
         self.initStates()
+        self._calEndCond = self.allTaskCmplt
         cal_type = self.decodeProcessor()
         if cal_type == CalType.stateInvalidCond:
             #            print('invalidState')
@@ -518,7 +538,7 @@ class MPDA_Decode_Discrete_NB(MPDA_Decode_Discrete_Base):
         return makespan
 
     def partDecode(self,encode,taskID :int = 0):
-        self._encode = encode
+        self.encode = encode
         self.initStates()
         cal_type = self.decodeProcessor()
         if cal_type == CalType.stateInvalidCond:
@@ -535,6 +555,80 @@ class MPDA_Decode_Discrete_NB(MPDA_Decode_Discrete_Base):
     def __str__(self):
         return 'mpda_decode_discrete_no_back ' +str(self._ins)
 
+'''
+re-calculation 
+'''
+class MPDA_Decode_Discrete_RC(MPDA_Decode_Discrete_Base):
+    def __init__(self):
+        super(MPDA_Decode_Discrete_RC,self).__init__()
+        # raise  Exception("xxx")
+        pass
+
+    def arriveCmpltTask(self,actionID,encodeInd):
+        self.encode[actionID][encodeInd] = -1
+        rob = self.robotLst[actionID]
+        taskID = -1
+        while True:
+            if len(rob.cmpltTaskLst) == 0:
+                if encodeInd == self.taskNum - 1:
+                    rob.stopBool = True
+                    break
+
+                taskID = self.encode[actionID][encodeInd]
+
+                if taskID < 0:
+                    encodeInd  += 1
+                    continue
+                dis  = self.rob2taskDisMat[actionID][taskID]
+                dis_time = dis/rob.vel
+                rob.arriveTime = dis_time
+                rob.encodeIndex = encodeInd
+                break
+            else:
+                if encodeInd == self.taskNum - 1:
+                    rob.stopBool = True
+                    break
+                taskID = self.encode[actionID][encodeInd]
+                if taskID < 0:
+                    encodeInd  += 1
+                    continue
+                preTaskID = rob.cmpltTaskLst[-1]
+                roadDur = self.calRoadDur(preTaskID,taskID,actionID)
+                rob.arriveTime  = rob.leaveTime + roadDur
+                rob.encodeIndex = encodeInd
+                break
+        rob.taskID = taskID
+
+    def leaveCmpltTask(self, actionID):
+        raise Exception('leaveCmpltTask')
+
+    def decode(self,encode):
+        # circleTime = 0
+        self.encode = encode
+        self._calEndCond = self.allTaskCmplt
+        while True:
+            # print('whileCircle = ',circleTime)
+            # circleTime += 1
+            #            start = time.clock()
+            self.initStates()
+            cal_type = self.decodeProcessor()
+            #            end = time.clock()
+            #            print(end - start)
+            if cal_type == CalType['backCond']:
+                continue
+            else:
+                break
+        #        print(self.cmpltLst)
+        #        self.saveEncode()
+        if cal_type == CalType.stateInvalidCond:
+            #            print('invalidState')
+            #            invalidState = True
+            makespan = sys.float_info.max
+        else:
+            #            print('validState')
+            makespan = self.calMakespan()
+        #        self.saveEncode()
+        return makespan
 
 
 if __name__ == '__main__':
@@ -549,16 +643,29 @@ if __name__ == '__main__':
     print(mpda_dis_decode)
     mpda_decode_base = MPDA_Decode_Discrete_Base()
     encode = np.zeros((ins.robNum, ins.taskNum), dtype=int)
-    random.seed(1)
+    random.seed(3)
 
-    for i in range(ins.robNum):
-        permLst = [x for x in range(ins.taskNum)]
-        random.shuffle(permLst)
-        encode[i][:] = permLst
-    print('encode =  ',encode)
+    while True:
+        for i in range(ins.robNum):
+            permLst = [x for x in range(ins.taskNum)]
+            random.shuffle(permLst)
+            encode[i][:] = permLst
+        # print('encode =  ',encode)
+        encode1 = copy.deepcopy(encode)
+        makespan1 = mpda_dis_decode.decode(encode1)
+        print("makespan1 = ",makespan1)
+        print('encode1 =  ',encode1)
 
-    makespan = mpda_dis_decode.decode(encode)
-    print("makespan = ",makespan)
+        mpda_dis_decode_rc = MPDA_Decode_Discrete_RC()
+        encode2 = copy.deepcopy(encode)
+        makespan2 = mpda_dis_decode_rc.decode(encode2)
+        print("makespan2 = ",makespan2)
+        print('encode2 =  ',encode2)
+
+        if makespan1 != makespan2:
+            raise  Exception('xxxx')
+
+
     f_deg = open(BaseDir + '\\debugData\\discrete_task_seq.txt', 'w')
     f_deg.write(str(mpda_dis_decode._actionSeq))
     # f_deg.write(str(action_seq))

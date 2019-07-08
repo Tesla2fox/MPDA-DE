@@ -21,7 +21,6 @@ class mpda_benchmark(Benchmark):
             :func:`NiaPy.benchmarks.Benchmark.__init__`
 
         """
-
         Benchmark.__init__(self, Lower, Upper)
 
     @staticmethod

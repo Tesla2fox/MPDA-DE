@@ -18,7 +18,7 @@
 #    each of which can be 0 or 1
 
 import random
-
+import time
 from deap import base
 from deap import creator
 from deap import tools
@@ -29,16 +29,18 @@ creator.create("Individual", list, typecode='i', fitness=creator.FitnessMin)
 toolbox = base.Toolbox()
 
 from MPDA_decode.instance import Instance
-from MPDA_decode.MPDA_decode_discrete import MPDA_Decode_Discrete_NB,MPDA_Decode_Discrete_Base
+from MPDA_decode.MPDA_decode_discrete import MPDA_Decode_Discrete_NB,MPDA_Decode_Discrete_Base,MPDA_Decode_Discrete_RC
 insName = '14_14_ECCENTRIC_RANDOMCLUSTERED_SVLCV_LVLCV_thre0.1MPDAins.dat'
-insName = '11_8_RANDOMCLUSTERED_CENTRAL_SVSCV_LVSCV_thre0.1MPDAins.dat'
+# insName = '11_8_RANDOMCLUSTERED_CENTRAL_SVSCV_LVSCV_thre0.1MPDAins.dat'
 # insName = '20_20_CLUSTERED_RANDOM_QUADRANT_LVSCV_thre0.1MPDAins.dat'
+insName = '29_29_CLUSTERED_ECCENTRIC_LVLCV_SVSCV_thre0.1MPDAins.dat'
 ins = Instance('.\\benchmark\\' + insName)
 
 IND_ROBNUM  = ins.robNum
 IND_TASKNUM = ins.taskNum
 MPDA_Decode_Discrete_Base._ins = ins
 MPDA_Decode_Discrete_NB._ins = ins
+MPDA_Decode_Discrete_RC._ins = ins
 print(ins)
 
 
@@ -53,7 +55,7 @@ def mpda_init_encode(robNum,taskNum):
 
 import numpy as np
 
-def mpda_eval_discrete(individual):
+def mpda_eval_discrete_nb(individual):
     encode =  np.zeros((ins.robNum, ins.taskNum), dtype=int)
     i = 0
     for robID in range(IND_ROBNUM):
@@ -63,6 +65,19 @@ def mpda_eval_discrete(individual):
     mpda_decode_nb = MPDA_Decode_Discrete_NB()
     # print(encode)
     ms = mpda_decode_nb.decode(encode)
+    return ms,
+
+
+def mpda_eval_discrete_rc(individual):
+    encode =  np.zeros((ins.robNum, ins.taskNum), dtype=int)
+    i = 0
+    for robID in range(IND_ROBNUM):
+        for taskID in range(IND_TASKNUM):
+            encode[robID][taskID] = individual[i]
+            i += 1
+    mpda_decode_rc = MPDA_Decode_Discrete_RC()
+    # print(encode)
+    ms = mpda_decode_rc.decode(encode)
     return ms,
 
 
@@ -162,7 +177,7 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 # Operator registration
 # ----------
 # register the goal / fitness function
-toolbox.register("evaluate",mpda_eval_discrete)
+toolbox.register("evaluate",mpda_eval_discrete_nb)
 
 # register the crossover operator
 toolbox.register("mate",mpda_mate)
@@ -185,11 +200,16 @@ toolbox.register("select", tools.selAutomaticEpsilonLexicase)
 
 # ----------
 
+f_data = open('.//debugData//GA_'+insName,'w')
+
+
 def main():
     random.seed(64)
 
     # create an initial population of 300 individuals (where
     # each individual is a list of integers)
+    start = time.clock()
+
     pop = toolbox.population(n=300)
 
     # CXPB  is the probability with which two individuals
@@ -212,6 +232,7 @@ def main():
 
     # Variable keeping track of the number of generations
     g = 0
+
 
     # Begin the evolution
     while g < 600:
@@ -266,16 +287,19 @@ def main():
         print("  Max %s" % max(fits))
         print("  Avg %s" % mean)
         print("  Std %s" % std)
-
+        f_data.write(str(g)+' '+ str(min(fits))+ ' ' + str(max(fits)) + '\n')
+        f_data.flush()
     print("-- End of (successful) evolution --")
-
+    end = time.clock()
+    f_data.write('time ='+str(end-start) + '\n')
     best_ind = tools.selBest(pop, 1)[0]
     print("Best individual is %s, %s" % (best_ind, best_ind.fitness.values))
+    f_data.close()
+# print(toolbox.select)
 
 
 if __name__ == "__main__":
     # random.seed(1)
-
     # a = mpda_init_encode(3,4)
     # b = mpda_init_encode(3,4)
     # print('a = ',a)
@@ -288,13 +312,9 @@ if __name__ == "__main__":
     #
     # print('x = ',x)
     # print('y = ',y)
-
-
     # a = random.sample(range(10),10)
     # b = random.sample(range(10),10)
-
     # print(mpda_cxPartialyMatched(a,b))
-
     main()
     # tools.initIterate()
     #  = [3,3,4]

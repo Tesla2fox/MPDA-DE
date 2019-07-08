@@ -66,6 +66,9 @@ class ActionSeq(object):
         if type(action_tuple) != ActionTuple:
             raise TypeError('tuple must be ActionTuple')
         elif action_tuple.eventTime < self.actionTime:
+            print(self)
+            self._seq.append(action_tuple)
+            print(self)
             raise Exception('time is out of order in action seq ')
         else:
             self._seq.append(action_tuple)
