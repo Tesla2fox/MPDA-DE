@@ -2,16 +2,14 @@ import sys
 import time
 import logging
 from  enum import Enum
-# import
-# from  import MPDA_Genetic_Alg
-import Optimizer-GA.mpda_genetic_alg
-import
 
+from OptimizerGA import MPDA_Genetic_Alg
 
 # class
 
 
 def mpda_GA(insName,decodeType):
+    pass
     optimizer = MPDA_Genetic_Alg(insName,decodeType)
     optimizer.run()
 
@@ -49,7 +47,8 @@ if __name__ == '__main__':
         # log.error('need decoder Type')
         raise Exception('need decoder Type')
     insName = sys.argv[1]
-
-
-
-    time.sleep(100)
+    #
+    #
+    #
+    # time.sleep(100)
+    print('main')

@@ -15,3 +15,8 @@ __project__ = "MPDA_decode"
 __version__ = "0.0.01"
 
 VERSION = "{0} v{1}".format(__project__, __version__)
+
+
+if __name__ == '__main__':
+    print(basicDecdoe)
+    print(Instance)
